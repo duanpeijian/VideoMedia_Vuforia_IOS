@@ -131,22 +131,28 @@ static NSString* const kTracksKey = @"tracks";
         
         // Determine the type of file that has been requested (simply checking
         // for the presence of a "://" in filename for remote files)
-        if (NSNotFound == [filename rangeOfString:@"://"].location  && (ON_TEXTURE == requestedType || ON_TEXTURE_FULLSCREEN == requestedType)) {
+        if ((ON_TEXTURE == requestedType || ON_TEXTURE_FULLSCREEN == requestedType)) {
             // For on texture rendering, we need a local file
             localFile = YES;
-            NSString* fullPath = nil;
             
-            // If filename is an absolute path (starts with a '/'), use it as is
-            if (0 == [filename rangeOfString:@"/"].location) {
-                fullPath = [NSString stringWithString:filename];
+            if(NSNotFound == [filename rangeOfString:@"://"].location){
+                NSString* fullPath = nil;
+                
+                // If filename is an absolute path (starts with a '/'), use it as is
+                if (0 == [filename rangeOfString:@"/"].location) {
+                    fullPath = [NSString stringWithString:filename];
+                }
+                else {
+                    // filename is a relative path, play media from this app's
+                    // resources folder
+                    fullPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:filename];
+                }
+                
+                mediaURL = [[NSURL alloc] initFileURLWithPath:fullPath];
             }
-            else {
-                // filename is a relative path, play media from this app's
-                // resources folder
-                fullPath = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:filename];
+            else{
+                mediaURL = [[NSURL alloc] initWithString:filename];
             }
-            
-            mediaURL = [[NSURL alloc] initFileURLWithPath:fullPath];
             
             if (YES == playOnTextureImmediately) {
                 playImmediately = playOnTextureImmediately;
@@ -640,11 +646,18 @@ static NSString* const kTracksKey = @"tracks";
         switch (status) {
             case AVPlayerItemStatusUnknown:
                 DEBUGLOG(@"AVPlayerItemStatusObservationContext -> AVPlayerItemStatusUnknown");
-                mediaState = NOT_READY;
+                
+                if(mediaState != PLAYING){
+                    mediaState = NOT_READY;
+                }
+                
                 break;
             case AVPlayerItemStatusReadyToPlay:
                 DEBUGLOG(@"AVPlayerItemStatusObservationContext -> AVPlayerItemStatusReadyToPlay");
-                mediaState = READY;
+                
+                if(mediaState != PLAYING){
+                    mediaState = READY;
+                }
                 
                 // If immediate on-texture playback has been requested, start
                 // playback
